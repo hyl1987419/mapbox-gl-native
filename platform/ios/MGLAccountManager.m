@@ -1,5 +1,3 @@
-#import <Foundation/Foundation.h>
-
 #import "MGLAccountManager_Private.h"
 #import "MGLMapboxEvents.h"
 #import "NSProcessInfo+MGLAdditions.h"
@@ -23,7 +21,10 @@
     if (shownInAppNumber) {
         [MGLAccountManager sharedManager].mapboxMetricsEnabledSettingShownInApp = [shownInAppNumber boolValue];
     }
-    self.accessToken = [bundle objectForInfoDictionaryKey:@"MGLMapboxAccessToken"];
+    NSString *accessToken = [bundle objectForInfoDictionaryKey:@"MGLMapboxAccessToken"];
+    if (accessToken.length) {
+        self.accessToken = accessToken;
+    }
 }
 
 // Can be called from any thread.

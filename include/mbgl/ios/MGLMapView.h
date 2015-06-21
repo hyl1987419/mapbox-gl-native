@@ -3,7 +3,12 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @class MGLUserLocation;
+@class MGLPolyline;
+@class MGLPolygon;
+@class MGLShape;
 
 @protocol MGLMapViewDelegate;
 @protocol MGLAnnotation;
@@ -28,17 +33,16 @@ IB_DESIGNABLE
 
 /** Initializes and returns a newly allocated map view with the specified frame and style URL.
 *   @param frame The frame for the view, measured in points.
-*   @param styleURL The map style URL to use. Can be either an HTTP/HTTPS URL or a Mapbox map ID style URL (`mapbox://<user.style>`).
+*   @param styleURL The map style URL to use. Can be either an HTTP/HTTPS URL or a Mapbox map ID style URL (`mapbox://<user.style>`). Specify `nil` for the default style.
 *   @return An initialized map view. */
-- (instancetype)initWithFrame:(CGRect)frame styleURL:(NSURL *)styleURL;
-- (instancetype)initWithFrame:(CGRect)frame accessToken:(NSString *)accessToken styleURL:(NSURL *)styleURL __attribute__((unavailable("Use -initWithFrame:styleURL:. Set MGLMapboxAccessToken in the Info.plist or call +[MGLAccountManager setAccessToken:].")));
+- (instancetype)initWithFrame:(CGRect)frame styleURL:(nullable NSURL *)styleURL;
+- (instancetype)initWithFrame:(CGRect)frame accessToken:(NSString *)accessToken styleURL:(nullable NSURL *)styleURL __attribute__((unavailable("Use -initWithFrame:styleURL:. Set MGLMapboxAccessToken in the Info.plist or call +[MGLAccountManager setAccessToken:].")));
 
 #pragma mark - Authorizing Access
 
 /** @name Authorizing Access */
 
-/** Mapbox API access token for the map view. */
-@property (nonatomic) NSString *accessToken __attribute__((unavailable("Use +[MGLAccountManager accessToken] and +[MGLAccountManager setAccessToken:].")));
+@property (nonatomic, nullable) NSString *accessToken __attribute__((unavailable("Use +[MGLAccountManager accessToken] and +[MGLAccountManager setAccessToken:].")));
 
 #pragma mark - Managing Constraints
 
@@ -74,7 +78,7 @@ IB_DESIGNABLE
 /** @name Accessing the Delegate */
 
 // TODO
-@property(nonatomic, weak) IBOutlet id<MGLMapViewDelegate> delegate;
+@property(nonatomic, weak, nullable) IBOutlet id<MGLMapViewDelegate> delegate;
 
 #pragma mark - Manipulating the Visible Portion of the Map
 
@@ -137,13 +141,13 @@ IB_DESIGNABLE
 *   @param point The point you want to convert.
 *   @param view The view that serves as the reference coordinate system for the `point` parameter.
 *   @return The map coordinate at the specified point. */
-- (CLLocationCoordinate2D)convertPoint:(CGPoint)point toCoordinateFromView:(UIView *)view;
+- (CLLocationCoordinate2D)convertPoint:(CGPoint)point toCoordinateFromView:(nullable UIView *)view;
 
 /** Converts a map coordinate to a point in the specified view.
 *   @param coordinate The map coordinate for which you want to find the corresponding point.
 *   @param view The view in whose coordinate system you want to locate the specified map coordinate. If this parameter is `nil`, the returned point is specified in the window’s coordinate system. If `view` is not `nil`, it must belong to the same window as the map view.
 *   @return The point (in the appropriate view or window coordinate system) corresponding to the specified latitude and longitude value. */
-- (CGPoint)convertCoordinate:(CLLocationCoordinate2D)coordinate toPointToView:(UIView *)view;
+- (CGPoint)convertCoordinate:(CLLocationCoordinate2D)coordinate toPointToView:(nullable UIView *)view;
 
 /** Returns the distance spanned by one pixel at the specified latitude and current zoom level.
 *
@@ -162,21 +166,21 @@ IB_DESIGNABLE
 *   The style may lack an ID if it is located at an HTTP, HTTPS, or local file URL. Use `styleURL` to get the URL in these cases.
 *
 *   To display the default style, set this property to `nil`. */
-@property (nonatomic) NSString *styleID;
-@property (nonatomic) NSString *mapID __attribute__((unavailable("Use styleID.")));
+@property (nonatomic, nullable) NSString *styleID;
+@property (nonatomic, nullable) NSString *mapID __attribute__((unavailable("Use styleID.")));
 
-/** Returns the URLs to the styles bundled with the library. */
-- (NSArray *)bundledStyleURLs;
+/** URLs of the styles bundled with the library. */
+@property (nonatomic, readonly) NS_ARRAY_OF(NSURL *) *bundledStyleURLs;
 
 /** URL of the style currently displayed in the receiver.
 *
 *   The URL may be a full HTTP or HTTPS URL or a Mapbox URL indicating the style’s map ID (`mapbox://<user.style>`).
 *
 *   To display the default style, set this property to `nil`. */
-@property (nonatomic) NSURL *styleURL;
+@property (nonatomic, null_resettable) NSURL *styleURL;
 
 /** Currently active style classes, represented as an array of string identifiers. */
-@property (nonatomic) NSArray *styleClasses;
+@property (nonatomic) NS_ARRAY_OF(NSString *) *styleClasses;
 
 /** Returns a Boolean value indicating whether the style class with the given identifier is currently active.
     @param styleClass The style class to query for.
@@ -198,7 +202,7 @@ IB_DESIGNABLE
 /** The complete list of annotations associated with the receiver. (read-only)
 *
 *   The objects in this array must adopt the MGLAnnotation protocol. If no annotations are associated with the map view, the value of this property is `nil`. */
-@property (nonatomic, readonly) NSArray *annotations;
+@property (nonatomic, readonly, nullable) NS_ARRAY_OF(id <MGLAnnotation>) *annotations;
 
 /** Adds the specified annotation to the map view.
 *   @param annotation The annotation object to add to the receiver. This object must conform to the MGLAnnotation protocol. The map view retains the specified object. */
@@ -206,7 +210,7 @@ IB_DESIGNABLE
 
 /** Adds an array of annotation objects to the map view.
 *   @param annotations An array of annotation objects. Each object in the array must conform to the MGLAnnotation protocol. The map view retains the individual annotation objects. */
-- (void)addAnnotations:(NSArray *)annotations;
+- (void)addAnnotations:(NS_ARRAY_OF(id <MGLAnnotation>) *)annotations;
 
 /** Removes the specified annotation object from the map view.
 *
@@ -220,12 +224,12 @@ IB_DESIGNABLE
 *   Removing annotation objects disassociates them from the map view entirely, preventing them from being displayed on the map. Thus, you would typically call this method only when you want to hide or delete the specified annotations.
 *
 *   @param annotations The array of annotations to remove. Objects in the array must conform to the MGLAnnotation protocol. */
-- (void)removeAnnotations:(NSArray *)annotations;
+- (void)removeAnnotations:(NS_ARRAY_OF(id <MGLAnnotation>) *)annotations;
 
 /** The annotations that are currently selected.
 *
 *   Assigning a new array to this property selects only the first annotation in the array. */
-@property (nonatomic, copy) NSArray *selectedAnnotations;
+@property (nonatomic, copy) NS_ARRAY_OF(id <MGLAnnotation>) *selectedAnnotations;
 
 /** Selects the specified annotation and displays a callout view for it.
 *
@@ -257,7 +261,7 @@ IB_DESIGNABLE
 @property (nonatomic, assign, readonly, getter=isUserLocationVisible) BOOL userLocationVisible;
 
 /** Returns the annotation object indicating the user’s current location. */
-@property (nonatomic, readonly) MGLUserLocation *userLocation;
+@property (nonatomic, readonly, nullable) MGLUserLocation *userLocation;
 
 /** The mode used to track the user location. */
 @property (nonatomic, assign) MGLUserTrackingMode userTrackingMode;
@@ -300,7 +304,31 @@ IB_DESIGNABLE
 *   @param mapView The map view that requested the annotation symbol name.
 *   @param annotation The object representing the annotation that is about to be displayed. 
 *   @return The marker symbol to display for the specified annotation or `nil` if you want to display the default symbol. */
-- (NSString *)mapView:(MGLMapView *)mapView symbolNameForAnnotation:(id <MGLAnnotation>)annotation;
+- (nullable NSString *)mapView:(MGLMapView *)mapView symbolNameForAnnotation:(id <MGLAnnotation>)annotation;
+
+/** Returns the alpha value to use when rendering a shape annotation. Defaults to `1.0`.
+*   @param mapView The map view rendering the shape annotation.
+*   @param annotation The annotation being rendered.
+*   @return An alpha value between `0` and `1.0`. */
+- (CGFloat)mapView:(MGLMapView *)mapView alphaForShapeAnnotation:(MGLShape *)annotation;
+
+/** Returns the stroke color to use when rendering a shape annotation. Defaults to black.
+*   @param mapView The map view rendering the shape annotation.
+*   @param annotation The annotation being rendered.
+*   @return A color to use for the shape outline. */
+- (UIColor *)mapView:(MGLMapView *)mapView strokeColorForShapeAnnotation:(MGLShape *)annotation;
+
+/** Returns the fill color to use when rendering a polygon annotation. Defaults to blue.
+*   @param mapView The map view rendering the polygon annotation.
+*   @param annotation The annotation being rendered.
+*   @return A color to use for the polygon interior. */
+- (UIColor *)mapView:(MGLMapView *)mapView fillColorForPolygonAnnotation:(MGLPolygon *)annotation;
+
+/** Returns the line width to use when rendering a polyline annotation. Defaults to `3.0`.
+*   @param mapView The map view rendering the polygon annotation.
+*   @param annotation The annotation being rendered.
+*   @return A line width for the polyline. */
+- (CGFloat)mapView:(MGLMapView *)mapView lineWidthForPolylineAnnotation:(MGLPolyline *)annotation;
 
 /** Returns a Boolean value indicating whether the annotation is able to display extra information in a callout bubble.
 *
@@ -322,7 +350,7 @@ IB_DESIGNABLE
 *   @param mapView The map view presenting the annotation callout.
 *   @param annotation The object representing the annotation with the callout.
 *   @return The accessory view to display. */
-- (UIView *)mapView:(MGLMapView *)mapView leftCalloutAccessoryViewForAnnotation:(id <MGLAnnotation>)annotation;
+- (nullable UIView *)mapView:(MGLMapView *)mapView leftCalloutAccessoryViewForAnnotation:(id <MGLAnnotation>)annotation;
 
 /** Return the view to display on the right side of the standard callout bubble.
 *
@@ -333,7 +361,7 @@ IB_DESIGNABLE
 *   @param mapView The map view presenting the annotation callout.
 *   @param annotation The object representing the annotation with the callout.
 *   @return The accessory view to display. */
-- (UIView *)mapView:(MGLMapView *)mapView rightCalloutAccessoryViewForAnnotation:(id <MGLAnnotation>)annotation;
+- (nullable UIView *)mapView:(MGLMapView *)mapView rightCalloutAccessoryViewForAnnotation:(id <MGLAnnotation>)annotation;
 
 #pragma mark - Responding to Map Position Changes
 
@@ -369,6 +397,8 @@ IB_DESIGNABLE
 
 #pragma mark - Tracking the User Location
 
+/** @name Tracking the User Location */
+
 /** Tells the delegate that the map view will begin tracking the user’s location.
 *
 *   This method is called when the value of the showsUserLocation property changes to `YES`.
@@ -391,7 +421,7 @@ IB_DESIGNABLE
 *
 *   @param mapView The map view that is tracking the user’s location.
 *   @param userLocation The location object representing the user’s latest location. This property may be `nil`. */
-- (void)mapView:(MGLMapView *)mapView didUpdateUserLocation:(MGLUserLocation *)userLocation;
+- (void)mapView:(MGLMapView *)mapView didUpdateUserLocation:(nullable MGLUserLocation *)userLocation;
 
 /** Tells the delegate that an attempt to locate the user’s position failed.
 *   @param mapView The map view that is tracking the user’s location.
@@ -443,3 +473,5 @@ IB_DESIGNABLE
 - (void)mapView:(MGLMapView *)mapView didDeselectAnnotation:(id <MGLAnnotation>)annotation;
 
 @end
+
+NS_ASSUME_NONNULL_END

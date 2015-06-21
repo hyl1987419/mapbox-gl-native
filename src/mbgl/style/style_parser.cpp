@@ -36,20 +36,31 @@ void StyleParser::parse(JSVal document) {
     if (document.HasMember("layers")) {
         parseLayers(document["layers"]);
 
+        // create shape annotations source
+        const std::string& shapeID = AnnotationManager::ShapeLayerID;
+
+        util::ptr<Source> shapeAnnotationsSource = std::make_shared<Source>();
+        sourcesMap.emplace(shapeID, shapeAnnotationsSource);
+        sources.emplace_back(shapeAnnotationsSource);
+        shapeAnnotationsSource->info.type = SourceType::Annotations;
+        shapeAnnotationsSource->info.source_id = shapeID;
+
         // create point annotations layer
-        //
-        const std::string& id = AnnotationManager::layerID;
+        const std::string& pointID = AnnotationManager::PointLayerID;
 
-        std::map<ClassID, ClassProperties> paints;
-        util::ptr<StyleLayer> annotations = std::make_shared<StyleLayer>(id, std::move(paints));
-        annotations->type = StyleLayerType::Symbol;
-        layersMap.emplace(id, std::pair<JSVal, util::ptr<StyleLayer>> { JSVal(id), annotations });
-        layers.emplace_back(annotations);
+        std::map<ClassID, ClassProperties> pointPaints;
+        util::ptr<StyleLayer> pointAnnotationsLayer = std::make_shared<StyleLayer>(pointID, std::move(pointPaints));
+        pointAnnotationsLayer->type = StyleLayerType::Symbol;
+        layersMap.emplace(pointID, std::pair<JSVal, util::ptr<StyleLayer>> { JSVal(pointID), pointAnnotationsLayer });
+        layers.emplace_back(pointAnnotationsLayer);
 
-        util::ptr<StyleBucket> pointBucket = std::make_shared<StyleBucket>(annotations->type);
-        pointBucket->name = annotations->id;
-        pointBucket->source_layer = annotations->id;
+        // create point annotations symbol bucket
+        util::ptr<StyleBucket> pointBucket = std::make_shared<StyleBucket>(pointAnnotationsLayer->type);
+        pointBucket->name = pointAnnotationsLayer->id;
+        pointBucket->source = pointID;
+        pointBucket->source_layer = pointAnnotationsLayer->id;
 
+        // build up point annotations style
         rapidjson::Document d;
         rapidjson::Value iconImage(rapidjson::kObjectType);
         iconImage.AddMember("icon-image", "{sprite}", d.GetAllocator());
@@ -58,14 +69,13 @@ void StyleParser::parse(JSVal document) {
         iconOverlap.AddMember("icon-allow-overlap", true, d.GetAllocator());
         parseLayout(iconOverlap, pointBucket);
 
-        util::ptr<Source> source = std::make_shared<Source>();
-        sourcesMap.emplace(id, source);
-        sources.emplace_back(source);
-        source->info.type = SourceType::Annotations;
-        pointBucket->source = source;
-        annotations->bucket = pointBucket;
-        //
-        // end point annotations
+        // create point annotations source & connect to bucket & layer
+        util::ptr<Source> pointAnnotationsSource = std::make_shared<Source>();
+        sourcesMap.emplace(pointID, pointAnnotationsSource);
+        sources.emplace_back(pointAnnotationsSource);
+        pointAnnotationsSource->info.type = SourceType::Annotations;
+        pointAnnotationsSource->info.source_id = pointID;
+        pointAnnotationsLayer->bucket = pointBucket;
     }
 
     if (document.HasMember("sprite")) {
@@ -221,6 +231,7 @@ void StyleParser::parseSources(JSVal value) {
             parseRenderProperty<SourceTypeClass>(itr->value, source->info.type, "type");
             parseRenderProperty(itr->value, source->info.url, "url");
             parseRenderProperty(itr->value, source->info.tile_size, "tileSize");
+            source->info.source_id = name;
             source->info.parseTileJSONProperties(itr->value);
             sources.emplace_back(source);
             sourcesMap.emplace(name, source);
@@ -937,12 +948,10 @@ void StyleParser::parseBucket(JSVal value, util::ptr<StyleLayer> &layer) {
     if (value.HasMember("source")) {
         JSVal value_source = replaceConstant(value["source"]);
         if (value_source.IsString()) {
-            const std::string source_name = { value_source.GetString(), value_source.GetStringLength() };
-            auto source_it = sourcesMap.find(source_name);
-            if (source_it != sourcesMap.end()) {
-                bucket->source = source_it->second;
-            } else {
-                Log::Warning(Event::ParseStyle, "can't find source '%s' required for layer '%s'", source_name.c_str(), layer->id.c_str());
+            bucket->source = { value_source.GetString(), value_source.GetStringLength() };
+            auto source_it = sourcesMap.find(bucket->source);
+            if (source_it == sourcesMap.end()) {
+                Log::Warning(Event::ParseStyle, "can't find source '%s' required for layer '%s'", bucket->source.c_str(), layer->id.c_str());
             }
         } else {
             Log::Warning(Event::ParseStyle, "source of layer '%s' must be a string", layer->id.c_str());

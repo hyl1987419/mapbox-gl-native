@@ -9,10 +9,15 @@ OUTPUT=build/ios/pkg
 IOS_SDK_VERSION=`xcrun --sdk iphoneos --show-sdk-version`
 LIBUV_VERSION=0.10.28
 
-if [[ ${#} -eq 0 ]]; then
+if [[ ${#} -eq 0 ]]; then # e.g. "make ipackage"
     BUILD_FOR_DEVICE=true
-else
+    GCC_GENERATE_DEBUGGING_SYMBOLS="YES"
+elif [[ ${1} == "sim" ]]; then # e.g. "make ipackage-sim"
     BUILD_FOR_DEVICE=false
+    GCC_GENERATE_DEBUGGING_SYMBOLS="YES"
+else # e.g. "make ipackage-strip"
+    BUILD_FOR_DEVICE=true
+    GCC_GENERATE_DEBUGGING_SYMBOLS="NO"
 fi
 
 function step { >&2 echo -e "\033[1m\033[36m* $@\033[0m"; }
@@ -44,6 +49,7 @@ if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
     xcodebuild -sdk iphoneos${IOS_SDK_VERSION} \
         ARCHS="arm64 armv7 armv7s" \
         ONLY_ACTIVE_ARCH=NO \
+        GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
         -project ./build/ios/mbgl.xcodeproj \
         -configuration ${BUILDTYPE} \
         -target everything \
@@ -54,6 +60,7 @@ step "Building iOS Simulator targets..."
 xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
     ARCHS="x86_64 i386" \
     ONLY_ACTIVE_ARCH=NO \
+    GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
     -project ./build/ios/mbgl.xcodeproj \
     -configuration ${BUILDTYPE} \
     -target everything \
@@ -102,12 +109,20 @@ if [ -z `which appledoc` ]; then
     exit 1
 fi
 DOCS_OUTPUT="${OUTPUT}/static/Docs"
-DOCS_VERSION=$( git tag -l ios\* --sort -v:refname | sed -n '1p' | sed 's/ios-v//' )
-README="/tmp/GL-README.md"
+DOCS_VERSION=$( git tag --sort -v:refname | grep -v '\-rc.' | sed -n '1p' | sed 's/^v//' )
+rm -rf /tmp/mbgl
+mkdir -p /tmp/mbgl/
+README=/tmp/mbgl/GL-README.md
 cat ios/README.md > ${README}
 echo >> ${README}
 echo -n "#" >> ${README}
 cat CHANGELOG.md >> ${README}
+# Copy headers to a temporary location where we can substitute macros that appledoc doesn't understand.
+cp -r "${OUTPUT}/static/Headers" /tmp/mbgl
+perl \
+    -pi \
+    -e 's/NS_(?:(MUTABLE)_)?(ARRAY|SET|DICTIONARY)_OF\(\s*(.+?)\s*\)/NS\L\u$1\u$2\E <$3>/g' \
+    /tmp/mbgl/Headers/*.h
 appledoc \
     --output ${DOCS_OUTPUT} \
     --project-name "Mapbox GL for iOS ${DOCS_VERSION}" \
@@ -116,6 +131,5 @@ appledoc \
     --no-create-docset \
     --no-install-docset \
     --company-id com.mapbox \
-    --ignore include/mbgl/ios/private \
     --index-desc ${README} \
-    include/mbgl/ios
+    /tmp/mbgl/Headers

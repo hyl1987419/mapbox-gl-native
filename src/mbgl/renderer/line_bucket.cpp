@@ -10,10 +10,6 @@
 #include <mbgl/util/math.hpp>
 #include <mbgl/platform/gl.hpp>
 
-#ifndef BUFFER_OFFSET
-#define BUFFER_OFFSET(i) ((char*)nullptr + (i))
-#endif
-
 #include <cassert>
 
 using namespace mbgl;
@@ -85,7 +81,7 @@ void LineBucket::addGeometry(const std::vector<Coordinate>& vertices) {
     for (size_t i = 0; i < len; ++i) {
         if (closed && i == len - 1) {
             // if the line is closed, we treat the last vertex like the first
-            nextVertex = vertices[i];
+            nextVertex = vertices[1];
         } else if (i + 1 < len) {
             // just the next vertex
             nextVertex = vertices[i + 1];
